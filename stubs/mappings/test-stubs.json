@@ -1,0 +1,60 @@
+{
+  "mappings": [
+    {
+      "priority": 1,
+      "request": {
+        "method": "GET",
+        "url": "/api/hello"
+      },
+      "response": {
+        "status": 200,
+        "body": "Hello World!\n"
+      }
+    },
+    {
+      "priority": 1,
+      "request": {
+        "method": "GET",
+        "url": "/api/bonjour"
+      },
+      "response": {
+        "status": 400,
+        "body": "Au revoir!\n"
+      }
+    },
+    {
+      "priority": 1,
+      "request": {
+        "method": "GET",
+        "urlPathPattern": "/postcode/I.*"
+      },
+      "response": {
+        "bodyFileName": "postal-service-resp-innercity.json",
+        "headers": {
+          "Content-Type": "application/json"
+        },
+        "status": 200,
+        "transformers": [
+          "response-template"
+        ]
+      }
+    },
+    {
+      "priority": 2,
+      "request": {
+        "method": "GET",
+        "urlPathPattern": "/postcode/.*"
+      },
+      "response": {
+        "bodyFileName": "postal-service-resp-default.json",
+        "headers": {
+          "Content-Type": "application/json"
+        },
+        "status": 200,
+        "transformers": [
+          "response-template"
+        ]
+      }
+    }
+  ]
+}

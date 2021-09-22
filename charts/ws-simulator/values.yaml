@@ -1,0 +1,8 @@
+replicaCount: 1
+image:
+  repository: agrisin/ws-simulator
+  tag: "latest"
+  pullPolicy: Always
+service:
+  type: LoadBalancer
+  port: 9999

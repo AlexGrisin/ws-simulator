@@ -1,0 +1,64 @@
+podLabel = UUID.randomUUID().toString()
+
+properties([
+        buildDiscarder(logRotator(artifactDaysToKeepStr: '', artifactNumToKeepStr: '', daysToKeepStr: '5', numToKeepStr: '5')),
+        parameters([
+                string(defaultValue: 'worker', description: '', name: 'imageName', trim: false)
+        ])
+])
+
+podTemplate(
+        label: podLabel,
+        containers: [
+                containerTemplate(
+                        name: 'cloud-sdk',
+                        image: 'google/cloud-sdk:alpine',
+                        alwaysPullImage: true,
+                        ttyEnabled: true,
+                        command: 'cat',
+                        workingDir: '/home/jenkins/agent'
+                )
+        ],
+        volumes: [
+                hostPathVolume(mountPath: '/var/run/docker.sock', hostPath: '/var/run/docker.sock')
+        ]
+)
+
+{
+    node(podLabel) {
+        try
+        {
+            container('cloud-sdk') {
+                stage('checkout') {
+                    checkout scm
+                }
+
+                date = new Date().format('yyyy-MM-dd_HH-mm-ss')
+                latest = "agrisin/${params.imageName}:latest"
+
+                stage('build') {
+                    sh "docker build --no-cache=true -t ${latest} images/${imageName}"
+                }
+
+                stage('publish') {
+                    withCredentials([usernamePassword(credentialsId: 'dockerhub', passwordVariable: 'PASSWORD', usernameVariable: 'USERNAME')]) {
+                        sh "docker login --username ${USERNAME} --password ${PASSWORD}"
+                        sh "docker push ${latest}"
+                    }
+                }
+            }
+        }
+        catch (any)
+        {
+            currentBuild.result = 'FAILURE'
+            throw any
+        }
+        finally
+        {
+            if (currentBuild.result == null)
+            {
+                currentBuild.result = 'SUCCESS'
+            }
+        }
+    }
+}

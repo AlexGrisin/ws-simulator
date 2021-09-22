@@ -1,0 +1,63 @@
+podLabel = UUID.randomUUID().toString()
+
+properties([
+        buildDiscarder(logRotator(artifactDaysToKeepStr: '', artifactNumToKeepStr: '', daysToKeepStr: '5', numToKeepStr: '5')),
+        parameters([
+                string(defaultValue: 'eu.gcr.io', description: '', name: 'host', trim: false),
+                string(defaultValue: 'ws-simulator', description: '', name: 'repo', trim: false),
+                string(defaultValue: 'perf-test-cluster-1', description: '', name: 'cluster', trim: false),
+                string(defaultValue: 'striped-proxy-280112', description: '', name: 'project', trim: false),
+                string(defaultValue: 'europe-west1-b', description: '', name: 'zone', trim: false)
+        ])
+])
+
+podTemplate(
+        label: podLabel,
+        containers: [
+                containerTemplate(
+                        name: 'cloud-sdk-helm',
+                        image: 'agrisin/worker:latest',
+                        alwaysPullImage: true,
+                        ttyEnabled: true,
+                        command: 'cat',
+                        workingDir: '/home/jenkins/agent'
+                )
+        ]
+)
+
+{
+    node(podLabel) {
+        try
+        {
+            container('cloud-sdk-helm') {
+                stage('checkout') {
+                    checkout scm
+                }
+
+                stage('gcloud login') {
+                    withCredentials([file(credentialsId: 'jenkins-sa', variable: 'GC_KEY')]) {
+                        sh "gcloud auth activate-service-account --key-file=${GC_KEY}"
+                        sh "gcloud container clusters get-credentials ${params.cluster} --zone ${params.zone} --project ${params.project}"
+                    }
+                }
+
+                stage('deploy') {
+                    sh "helm upgrade --install ws-simulator charts/ws-simulator \
+                        --set image.repository=${params.host}/${params.project}/${params.repo}"
+                }
+            }
+        }
+        catch (any)
+        {
+            currentBuild.result = 'FAILURE'
+            throw any
+        }
+        finally
+        {
+            if (currentBuild.result == null)
+            {
+                currentBuild.result = 'SUCCESS'
+            }
+        }
+    }
+}

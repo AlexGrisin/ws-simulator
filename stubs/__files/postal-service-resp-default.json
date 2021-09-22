@@ -1,0 +1,6 @@
+{
+  "Address": {
+    "Postcode": "{{request.requestLine.pathSegments.[1]}}",
+  },
+  "DeliveryMode": "Default"
+}
